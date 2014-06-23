@@ -10,10 +10,14 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentManager.OnBackStackChangedListener;
 import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.URLUtil;
+import android.widget.FrameLayout;
+import android.widget.FrameLayout.LayoutParams;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,42 +41,68 @@ import java.util.ArrayList;
 
 import org.carbonware.fifa.wallpapers.R;
 
-public class HomeActivity extends SherlockFragmentActivity implements OnRestResponseHandler, OnBackStackChangedListener, OnGetViewListener, OnFragmentClickListener {
+import com.google.analytics.tracking.android.EasyTracker;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
+
+public class HomeActivity extends SherlockFragmentActivity implements
+		OnRestResponseHandler, OnBackStackChangedListener, OnGetViewListener,
+		OnFragmentClickListener {
 
 	private final String TAG = "HomeActivity";
 	private final String KEY_LIST_DATA = "list_cache";
 	private final String KEY_LIST_POSITION = "list_position";
-
-
+	   private AdView adView;
+	   
 	private static ImageLoader mImageLoader;
 	private ArrayList<NodeCategory> mData;
 	private int mPosition = -1;
 	private boolean mIgnoreSelection = false;
 
 	@Override
-	public void onCreate (Bundle savedInstanceState) {
+	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		super.getSupportFragmentManager().addOnBackStackChangedListener(this);
 		super.setContentView(R.layout.activity_home);
-		this.loadData(savedInstanceState);
+		
+		//////////////////
+		
+		  AdView adView = (AdView) this.findViewById(R.id.adView);
+		    AdRequest adRequest = new AdRequest.Builder().build();
+		    adView.loadAd(adRequest);
+		    
+		//////////////////
+		
+//		    adView = new AdView(this);
+//		    adView.setAdSize(AdSize.BANNER);
+//		    adView.setAdUnitId("ca-app-pub-6053431456462596/7226341666");
+//		    FrameLayout layout = (FrameLayout) findViewById(R.id.container);
+//		    FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
+//
+//		    layout.addView(adView, params);
+//		    AdRequest adRequest = new AdRequest.Builder().build();
+//		    adView.loadAd(adRequest);
 
+		
+		//////////////////
+		
+		this.loadData(savedInstanceState);
+			
 		if (savedInstanceState == null) {
-			BitmapDisplayer displayer = getResources().getBoolean(R.bool.config_enable_image_fade_in)
-					? new FadeInBitmapDisplayer(getResources().getInteger(R.integer.config_fade_in_time))
+			BitmapDisplayer displayer = getResources().getBoolean(
+					R.bool.config_enable_image_fade_in) ? new FadeInBitmapDisplayer(
+					getResources().getInteger(R.integer.config_fade_in_time))
 					: new SimpleBitmapDisplayer();
 
 			final DisplayImageOptions options = new DisplayImageOptions.Builder()
-					.displayer(displayer)
-					.cacheInMemory()
-					.cacheOnDisc()
-					.build();
+					.displayer(displayer).cacheInMemory().cacheOnDisc().build();
 
-			final ImageLoaderConfiguration config = new ImageLoaderConfiguration.Builder(this)
-					.threadPriority(Thread.NORM_PRIORITY - 1)
+			final ImageLoaderConfiguration config = new ImageLoaderConfiguration.Builder(
+					this).threadPriority(Thread.NORM_PRIORITY - 1)
 					.offOutOfMemoryHandling()
 					.tasksProcessingOrder(QueueProcessingType.FIFO)
-					.defaultDisplayImageOptions(options)
-					.build();
+					.defaultDisplayImageOptions(options).build();
 
 			mImageLoader = ImageLoader.getInstance();
 			mImageLoader.init(config);
@@ -80,7 +110,19 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 	}
 
 	@Override
-	public void onSaveInstanceState (Bundle outState) {
+	public void onStart() {
+		super.onStart();
+		EasyTracker.getInstance(this).activityStart(this); // Add this method.
+	}
+
+	@Override
+	public void onStop() {
+		super.onStop();
+		EasyTracker.getInstance(this).activityStop(this); // Add this method.
+	}
+
+	@Override
+	public void onSaveInstanceState(Bundle outState) {
 		if (this.mData != null) {
 			outState.putSerializable(KEY_LIST_DATA, this.mData);
 			outState.putInt(KEY_LIST_POSITION, this.mPosition);
@@ -88,17 +130,20 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 		super.onSaveInstanceState(outState);
 	}
 
-	public void loadData (Bundle savedInstanceState) {
+	public void loadData(Bundle savedInstanceState) {
 
 		// Check Network State
 		if (!NetworkUtil.getNetworkState(this)) {
-			final RetryFragment fragment = RetryFragment.getFragmentWithMessage("No connection");
+			final RetryFragment fragment = RetryFragment
+					.getFragmentWithMessage("No connection");
 			this.addFragment(fragment, RetryFragment.TAG, true);
 			return;
 		}
 
-		if (savedInstanceState == null || savedInstanceState.get(KEY_LIST_DATA) == null) {
-			final String url = super.getResources().getString(R.string.config_wallpaper_manifest_url);
+		if (savedInstanceState == null
+				|| savedInstanceState.get(KEY_LIST_DATA) == null) {
+			final String url = super.getResources().getString(
+					R.string.config_wallpaper_manifest_url);
 			if (url != null && URLUtil.isValidUrl(url)) {
 				// Add Loading Fragment
 				final LoadingFragment fragment = new LoadingFragment();
@@ -110,7 +155,8 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 			}
 		} else {
 			Log.i(TAG, "Restored Instance");
-			this.mData = (ArrayList<NodeCategory>) savedInstanceState.get(KEY_LIST_DATA);
+			this.mData = (ArrayList<NodeCategory>) savedInstanceState
+					.get(KEY_LIST_DATA);
 			this.mPosition = savedInstanceState.getInt(KEY_LIST_POSITION);
 			if (this.mPosition != -1) {
 				mIgnoreSelection = true;
@@ -121,27 +167,28 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 	}
 
 	@Override
-	public void onResponse (ArrayList<NodeCategory> response) {
+	public void onResponse(ArrayList<NodeCategory> response) {
 		this.mData = response;
 
 		// Add ERROR Fragment
 		if (this.mData == null) {
-			final RetryFragment fragment = RetryFragment.getFragmentWithMessage();
+			final RetryFragment fragment = RetryFragment
+					.getFragmentWithMessage();
 			this.addFragment(fragment, RetryFragment.TAG, true);
 			return;
 		}
 
 		if (this.mData.isEmpty()) {
 			this.addFragment(null, null, true);
-			Toast.makeText(getApplicationContext(), "Empty Manifest!", Toast.LENGTH_SHORT).show();
+			Toast.makeText(getApplicationContext(), "Empty Manifest!",
+					Toast.LENGTH_SHORT).show();
 			return;
 		}
 
 		this.configureActionBar();
 	}
 
-
-	public void configureActionBar () {
+	public void configureActionBar() {
 		super.getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 		super.getSupportActionBar().setDisplayShowHomeEnabled(true);
 
@@ -152,17 +199,20 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 			this.onCategorySelected(node);
 		} else {
 			super.getSupportActionBar().setDisplayShowTitleEnabled(false);
-			super.getSupportActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
-			super.getSupportActionBar().setListNavigationCallbacks(new Adapter(this, this, this.mData), this);
+			super.getSupportActionBar().setNavigationMode(
+					ActionBar.NAVIGATION_MODE_LIST);
+			super.getSupportActionBar().setListNavigationCallbacks(
+					new Adapter(this, this, this.mData), this);
 			if (this.mPosition != -1) {
 				this.mIgnoreSelection = true;
-				super.getSupportActionBar().setSelectedNavigationItem(this.mPosition);
+				super.getSupportActionBar().setSelectedNavigationItem(
+						this.mPosition);
 			}
 		}
 	}
 
-
-	public void addFragment (SherlockFragment fragment, String tag, boolean clearStack) {
+	public void addFragment(SherlockFragment fragment, String tag,
+			boolean clearStack) {
 		final FragmentManager fm = super.getSupportFragmentManager();
 		final FragmentTransaction transaction = fm.beginTransaction();
 
@@ -177,7 +227,8 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 			if (!clearStack) {
 				transaction.replace(R.id.container, fragment, tag);
 				transaction.addToBackStack(null);
-				transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
+				transaction
+						.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
 			} else {
 				transaction.replace(R.id.container, fragment, tag);
 			}
@@ -189,9 +240,8 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 		}
 	}
 
-
 	@Override
-	public boolean onNavigationItemSelected (int itemPosition, long itemId) {
+	public boolean onNavigationItemSelected(int itemPosition, long itemId) {
 		Log.i(TAG, "Item Selection: " + itemPosition);
 		this.mPosition = itemPosition;
 		if (this.mIgnoreSelection == true) {
@@ -204,7 +254,7 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 	}
 
 	@Override
-	public void onCategorySelected (NodeCategory node) {
+	public void onCategorySelected(NodeCategory node) {
 		final SherlockFragment frag = new CategoryFragment();
 		final Bundle args = new Bundle();
 		args.putSerializable(CategoryFragment.BUNDLE_TAG, node.wallpaperList);
@@ -213,7 +263,7 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 	}
 
 	@Override
-	public void onWallpaperSelected (NodeWallpaper node) {
+	public void onWallpaperSelected(NodeWallpaper node) {
 		final SherlockFragment frag = new WallpaperFragment();
 		final Bundle args = new Bundle();
 		args.putSerializable(WallpaperFragment.BUNDLE_TAG, node);
@@ -222,7 +272,8 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 	}
 
 	@Override
-	public View getView (int position, View convertView, ViewGroup parent, LayoutInflater mInflater) {
+	public View getView(int position, View convertView, ViewGroup parent,
+			LayoutInflater mInflater) {
 		final TextView t = new TextView(this);
 		t.setText(this.mData.get(position).name);
 		t.setTextSize(20);
@@ -232,13 +283,12 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 	}
 
 	@Override
-	public void onBackStackChanged () {
+	public void onBackStackChanged() {
 		final FragmentManager fm = super.getSupportFragmentManager();
 		if (fm.getBackStackEntryCount() == 0) {
 			this.configureActionBar();
 		}
 	}
-
 
 	private final String HIDE = "Hide Launcher Icon";
 	private final String SHOW = "Show Launcher Icon";
@@ -250,89 +300,114 @@ public class HomeActivity extends SherlockFragmentActivity implements OnRestResp
 	private final int DONT_KILL_APP = PackageManager.DONT_KILL_APP;
 
 	@Override
-	public boolean onCreateOptionsMenu (Menu menu) {
+	public boolean onCreateOptionsMenu(Menu menu) {
 		return super.onCreateOptionsMenu(menu);
 	}
 
 	@Override
-	public boolean onPrepareOptionsMenu (Menu menu) {
+	public boolean onPrepareOptionsMenu(Menu menu) {
 		menu.clear();
-		menu.add(3, 3, 3, ((isShowing()) ? HIDE : SHOW)).setShowAsAction(MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW);
+		menu.add(3, 3, 3, ((isShowing()) ? HIDE : SHOW)).setShowAsAction(
+				MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW);
 		return super.onPrepareOptionsMenu(menu);
 	}
 
 	@Override
-	public boolean onOptionsItemSelected (MenuItem item) {
+	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-			case android.R.id.home: {
-				final FragmentManager fm = super.getSupportFragmentManager();
-				fm.popBackStack();
-				return true;
-			}
+		case android.R.id.home: {
+			final FragmentManager fm = super.getSupportFragmentManager();
+			fm.popBackStack();
+			return true;
+		}
 
-			default: {
-				if (item.getTitle().equals(SHOW)) {
-					Log.i(TAG, "Show");
-					super.showDialog(SHOW_ID);
-					return true;
-				} else if (item.getTitle().equals(HIDE)) {
-					Log.i(TAG, "Hide");
-					super.showDialog(HIDE_ID);
-					return true;
-				} else {
-					return super.onOptionsItemSelected(item);
-				}
+		default: {
+			if (item.getTitle().equals(SHOW)) {
+				Log.i(TAG, "Show");
+				super.showDialog(SHOW_ID);
+				return true;
+			} else if (item.getTitle().equals(HIDE)) {
+				Log.i(TAG, "Hide");
+				super.showDialog(HIDE_ID);
+				return true;
+			} else {
+				return super.onOptionsItemSelected(item);
 			}
+		}
 		}
 	}
 
 	@Override
-	protected Dialog onCreateDialog (int id) {
+	protected Dialog onCreateDialog(int id) {
 		if (id == HIDE_ID) {
-			return (new AlertDialog.Builder(this)).setCancelable(true).setTitle("Hide App Icon").setIcon(android.R.drawable.ic_dialog_alert).setMessage("This option will remove the icon from your app drawer.").setPositiveButton("Remove", new DialogInterface.OnClickListener() {
-				public void onClick (DialogInterface dialog, int which) {
-					hideIcon();
-					dialog.dismiss();
-				}
-			}).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-				public void onClick (DialogInterface dialog, int which) {
-					dialog.dismiss();
-				}
-			}).create();
+			return (new AlertDialog.Builder(this))
+					.setCancelable(true)
+					.setTitle("Hide App Icon")
+					.setIcon(android.R.drawable.ic_dialog_alert)
+					.setMessage(
+							"This option will remove the icon from your app drawer.")
+					.setPositiveButton("Remove",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int which) {
+									hideIcon();
+									dialog.dismiss();
+								}
+							})
+					.setNegativeButton("Cancel",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int which) {
+									dialog.dismiss();
+								}
+							}).create();
 		} else if (id == SHOW_ID) {
-			return (new AlertDialog.Builder(this)).setCancelable(true).setTitle("Show App Icon").setIcon(android.R.drawable.ic_dialog_alert).setMessage("This option will restore the icon into your app drawer.").setPositiveButton("Show", new DialogInterface.OnClickListener() {
-				public void onClick (DialogInterface dialog, int which) {
+			return (new AlertDialog.Builder(this))
+					.setCancelable(true)
+					.setTitle("Show App Icon")
+					.setIcon(android.R.drawable.ic_dialog_alert)
+					.setMessage(
+							"This option will restore the icon into your app drawer.")
+					.setPositiveButton("Show",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int which) {
 
-					showIcon();
-					dialog.dismiss();
-				}
-			}).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-				public void onClick (DialogInterface dialog, int which) {
-					dialog.dismiss();
-				}
-			}).create();
+									showIcon();
+									dialog.dismiss();
+								}
+							})
+					.setNegativeButton("Cancel",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int which) {
+									dialog.dismiss();
+								}
+							}).create();
 		}
 
 		return null;
 	}
 
-	public boolean isShowing () {
+	public boolean isShowing() {
 		PackageManager p = super.getPackageManager();
-		return (p.getComponentEnabledSetting(getComponenetName()) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED || p.getComponentEnabledSetting(getComponenetName()) == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
+		return (p.getComponentEnabledSetting(getComponenetName()) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED || p
+				.getComponentEnabledSetting(getComponenetName()) == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
 	}
 
-	private void hideIcon () {
-		getPackageManager().setComponentEnabledSetting(getComponenetName(), FLAG_HIDE, DONT_KILL_APP);
+	private void hideIcon() {
+		getPackageManager().setComponentEnabledSetting(getComponenetName(),
+				FLAG_HIDE, DONT_KILL_APP);
 	}
 
-	private void showIcon () {
-		getPackageManager().setComponentEnabledSetting(getComponenetName(), FLAG_SHOW, DONT_KILL_APP);
+	private void showIcon() {
+		getPackageManager().setComponentEnabledSetting(getComponenetName(),
+				FLAG_SHOW, DONT_KILL_APP);
 	}
 
-	private ComponentName getComponenetName () {
+	private ComponentName getComponenetName() {
 		ComponentName c = new ComponentName(this, LauncherActivity.class);
 		return c;
 	}
-
 
 }
